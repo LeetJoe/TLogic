@@ -5,11 +5,11 @@ import itertools
 import numpy as np
 from joblib import Parallel, delayed
 
-import rule_application as ra
-from grapher import Grapher
-from temporal_walk import store_edges
-from rule_learning import rules_statistics
-from score_functions import score_12
+import rule_application_test as ra
+from grapher_test import Grapher
+from temporal_walk_test import store_edges
+from rule_learning_test import rules_statistics
+from score_functions_test import score_12
 
 
 parser = argparse.ArgumentParser()
@@ -38,6 +38,8 @@ rules_dict = json.load(open(dir_path + rules_file))
 rules_dict = {int(k): v for k, v in rules_dict.items()}
 print("Rules statistics:")
 rules_statistics(rules_dict)
+
+# 选出 confidence 不低于0.01，body_supply 不低于 2, len(rule["body_rels"]) in rule_lengths 的那些 rules
 rules_dict = ra.filter_rules(
     rules_dict, min_conf=0.01, min_body_supp=2, rule_lengths=rule_lengths
 )
@@ -45,9 +47,9 @@ print("Rules statistics after pruning:")
 rules_statistics(rules_dict)
 learn_edges = store_edges(data.train_idx)
 
-score_func = score_12
+score_func = score_12  # score function 有三个不同的实现
 # It is possible to specify a list of list of arguments for tuning
-args = [[0.1, 0.5]]
+args = [[0.1, 0.5]]  # args 是一组参数，表示 [lambda, coeff]，具体见 score_functions.score_12() 里的 lambda 和 a。
 
 
 def apply_rules(i, num_queries):
@@ -73,32 +75,34 @@ def apply_rules(i, num_queries):
     else:
         test_queries_idx = range(i * num_queries, len(test_data))
 
-    cur_ts = test_data[test_queries_idx[0]][3]
-    edges = ra.get_window_edges(data.all_idx, cur_ts, learn_edges, window)
+    cur_ts = test_data[test_queries_idx[0]][3]  # 当前分组第一项条目的 ts
+    edges = ra.get_window_edges(data.all_idx, cur_ts, learn_edges, window) # window 传 0 表示取 cur_ts 之前的所有数据
 
     it_start = time.time()
     for j in test_queries_idx:
-        test_query = test_data[j]
+        test_query = test_data[j]  # 取一条数据
         cands_dict = [dict() for _ in range(len(args))]
 
-        if test_query[3] != cur_ts:
+        if test_query[3] != cur_ts:  # 如果时间发生了变化，窗口数据也需要相应调整
             cur_ts = test_query[3]
+            # data.all_idx, train+valid+test data. 若 window>0 返回 all_idx 里ts在 [cur_ts-window, cur_ts] 的数据；
+            # 若 window=0，则返回 all_idx 里 ts 在[0, cur_ts] 里的数据；或 window<0，则直接返回 learn_edges.
             edges = ra.get_window_edges(data.all_idx, cur_ts, learn_edges, window)
 
-        if test_query[1] in rules_dict:
-            dicts_idx = list(range(len(args)))
-            for rule in rules_dict[test_query[1]]:
-                walk_edges = ra.match_body_relations(rule, edges, test_query[0])
+        if test_query[1] in rules_dict:   # test_query[1] 是4元组的 relation，如果 relation 有 rule 存在(注意这里是 if 语句不是 for 语句)
+            dicts_idx = list(range(len(args)))   # args 可以多给几对参数，然后评估不同的组合的评价效果
+            for rule in rules_dict[test_query[1]]:  # test_query[1] 是 relation, 按 relation 从 rules_dict 中找到相关的 rule 进行遍历
+                walk_edges = ra.match_body_relations(rule, edges, test_query[0]) # test_query[0] 是 head，尝试使用 rule 要找 walk
 
                 if 0 not in [len(x) for x in walk_edges]:
-                    rule_walks = ra.get_walks(rule, walk_edges)
+                    rule_walks = ra.get_walks(rule, walk_edges)    # rule_walks 是一个 Numpy.DataFrame, 类似 excel 的二维数据组织结构。
                     if rule["var_constraints"]:
                         rule_walks = ra.check_var_constraints(
                             rule["var_constraints"], rule_walks
                         )
 
                     if not rule_walks.empty:
-                        cands_dict = ra.get_candidates(
+                        cands_dict = ra.get_candidates(   # 使用一个打分函数选择出 top_k 的候选
                             rule,
                             rule_walks,
                             cur_ts,
@@ -152,7 +156,7 @@ def apply_rules(i, num_queries):
             for s in range(len(args)):
                 all_candidates[s][j] = dict()
 
-        if not (j - test_queries_idx[0] + 1) % 100:
+        if not (j - test_queries_idx[0] + 1) % 100:    # j 每前进 100 轮打印一次
             it_end = time.time()
             it_time = round(it_end - it_start, 6)
             print(
@@ -172,6 +176,7 @@ output = Parallel(n_jobs=num_processes)(
 )
 end = time.time()
 
+# 合并结果
 final_all_candidates = [dict() for _ in range(len(args))]
 for s in range(len(args)):
     for i in range(num_processes):

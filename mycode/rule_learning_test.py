@@ -55,6 +55,7 @@ class Rule_Learner(object):
         rule["body_rels"] = [
             self.inv_relation_id[x] for x in walk["relations"][1:][::-1] # [::n]表示设置步长，n=-1 表示倒序输出
         ]
+        # rule["var_constraints"] 里存放的是 entities 里那些在路径中出现不止一次的节点的"位置(下标)"
         rule["var_constraints"] = self.define_var_constraints(
             walk["entities"][1:][::-1]  # 表示除第一个 entity 外，其它 entities 的倒序
         )
@@ -348,6 +349,7 @@ def verbalize_rule(rule, id2relation):
 def rules_statistics(rules_dict):
     """
     Show statistics of the rules.
+    只是输出 rules_dict 的统计信息，没有什么实际的功能
 
     Parameters:
         rules_dict (dict): rules

@@ -27,12 +27,16 @@ num_processes = parsed["num_processes"]
 seed = parsed["seed"]
 
 dataset_dir = "../data/" + dataset + "/"
-data = Grapher(dataset_dir)
+data = Grapher(dataset_dir)     # data 中包含 id 与 rel/entity/ts 的正向/反向映射关系，以及把原来的 train/valid/test 数据 id 化后的元组(_idx)。
+# 基于 data.train_idx(就是id化的train 4 元组) 组织 neighbors 和 edges 两种结构，以及 train_idx 和 inv_relation_id
 temporal_walk = Temporal_Walk(data.train_idx, data.inv_relation_id, transition_distr)
+
+# 关于 rule 的处理
 rl = Rule_Learner(temporal_walk.edges, data.id2relation, data.inv_relation_id, dataset)
+
 all_relations = sorted(temporal_walk.edges)  # Learn for all relations
 
-
+# 主干过程在这里完成
 def learn_rules(i, num_relations):
     """
     Learn rules (multiprocessing possible).
@@ -55,12 +59,12 @@ def learn_rules(i, num_relations):
     else:
         relations_idx = range(i * num_relations, len(all_relations))
 
-    num_rules = [0]
+    num_rules = [0]  # 仅用于统计和打印
     for k in relations_idx:
-        rel = all_relations[k]
-        for length in rule_lengths:   # 参数
+        rel = all_relations[k]  # 选定一个关系
+        for length in rule_lengths:   # 参数,如[1,2,3]
             it_start = time.time()
-            for _ in range(num_walks):   # 参数
+            for _ in range(num_walks):   # 参数，如200
                 walk_successful, walk = temporal_walk.sample_walk(length + 1, rel)
                 # 当 length=1 的时候，通过两跳得到一个环，那么第二跳很可能是第一跳的逆。
                 if walk_successful:
@@ -107,5 +111,5 @@ rl.sort_rules_dict()   # 对每个 head 按照概率(confidence)降序排列。
 dt = datetime.now()
 dt = dt.strftime("%d%m%y%H%M%S")
 rl.save_rules(dt, rule_lengths, num_walks, transition_distr, seed)   # 将 rules_dict 保存到文件里，其它参数主要是用命名保存文件的。
-rl.save_rules_verbalized(dt, rule_lengths, num_walks, transition_distr, seed)  # 与上面类似，不过这种是以一种 human readable 的方式存在 txt 里面。
+# rl.save_rules_verbalized(dt, rule_lengths, num_walks, transition_distr, seed)  # 与上面类似，不过这种是以一种 human readable 的方式存在 txt 里面。
 rules_statistics(rl.rules_dict)
