@@ -21,7 +21,7 @@ class Temporal_Walk(object):
         self.inv_relation_id = inv_relation_id
         self.transition_distr = transition_distr
 
-        # neighbors 以 entity id 为下标，长度与 entity2id 的大小相同，item 是head与 id(也是下标) 相同的所有四元组(id 形式)
+        # neighbors 以 entity id 为下标，长度与 entity2id 的大小相同，item 是 head 与 id(也是下标) 相同的所有四元组(id 形式)
         self.neighbors = store_neighbors(learn_data)
         # edges 以 relation id 为下标，item 是与 relation id(也是下标) 相同的所有四元组(id形式), 但是 len(edges) 与
         # relation 的数量不相同，可能有 reverse rel 的原因。
