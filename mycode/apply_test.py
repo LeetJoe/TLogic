@@ -33,9 +33,11 @@ rule_lengths = [rule_lengths] if (type(rule_lengths) == int) else rule_lengths
 dataset_dir = "../data/" + dataset + "/"
 dir_path = "../output/" + dataset + "/"
 data = Grapher(dataset_dir)
+# 仓库里给的 run.txt 里的命令参数示例里没有修改 test_data 参数的情况, 都是默认值 test, 所以这里都是使用的 test_idx
+# todo test_data 是 apply 过程的主要目标数据
 test_data = data.test_idx if (parsed["test_data"] == "test") else data.valid_idx
 rules_dict = json.load(open(dir_path + rules_file))
-rules_dict = {int(k): v for k, v in rules_dict.items()}
+rules_dict = {int(k): v for k, v in rules_dict.items()} # 再次整理字典格式, 保证 key 都是 int 类型
 print("Rules statistics:")
 rules_statistics(rules_dict)
 
@@ -58,7 +60,7 @@ def apply_rules(i, num_queries):
 
     Parameters:
         i (int): process number
-        num_queries (int): minimum number of queries for each process
+        num_queries (int): minimum number of queries for each process, 实际上相当于 batch size
 
     Returns:
         all_candidates (list): answer candidates with corresponding confidence scores
@@ -66,7 +68,7 @@ def apply_rules(i, num_queries):
     """
 
     print("Start process", i, "...")
-    all_candidates = [dict() for _ in range(len(args))]
+    all_candidates = [dict() for _ in range(len(args))]  # 占位初始化
     no_cands_counter = 0
 
     num_rest_queries = len(test_data) - (i + 1) * num_queries
