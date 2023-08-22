@@ -81,8 +81,10 @@ dir_path = "../output/" + dataset + "/"
 dataset_dir = "../data/" + dataset + "/"
 data = Grapher(dataset_dir)
 num_entities = len(data.id2entity)
+# 使用的也是 test 数据集, valid 数据集应该是在 train 阶段使用了(?)
 test_data = data.test_idx if (parsed["test_data"] == "test") else data.valid_idx
 learn_edges = store_edges(data.train_idx)
+# todo 计算总体分布, 并为每一个数据集中的每一个 relation 计算分布
 obj_dist, rel_obj_dist = calculate_obj_distribution(data.train_idx, learn_edges)
 
 
@@ -100,13 +102,15 @@ num_samples = len(test_data)
 print("Evaluating " + candidates_file + ":")
 for i in range(num_samples):
     test_query = test_data[i]
-    if all_candidates[i]:
+    if all_candidates[i]:   # todo 这里用下标 i 定位 candidates? candidates 的下标怎么跟 test 的下标建议关联的, 在 apply 步骤里?
         candidates = all_candidates[i]
     else:
-        candidates = baseline_candidates(
+        candidates = baseline_candidates(  # baseline 候选, todo 基于关系分布为其生成候选列表
             test_query[1], learn_edges, obj_dist, rel_obj_dist
         )
+    # todo 如果在 test_data 里存在 h, r, ts 与 test_query 相同, 惟独 t 与 test_query 不相等的数据, 则把这样的 t 从 candidates 里剔除. (?)
     candidates = filter_candidates(test_query, candidates, test_data)
+    # rank 即 test_query[2] 在结果排序中命中的位置
     rank = calculate_rank(test_query[2], candidates, num_entities)
 
     if rank:
@@ -116,8 +120,9 @@ for i in range(num_samples):
                 hits_3 += 1
                 if rank == 1:
                     hits_1 += 1
-        mrr += 1 / rank
+        mrr += 1 / rank  # MRR 是 rank 的倒数和, rank 越靠前, MRR 越接近1(越大), 表明结果越好
 
+# 最后取平均
 hits_1 /= num_samples
 hits_3 /= num_samples
 hits_10 /= num_samples

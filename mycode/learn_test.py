@@ -29,6 +29,7 @@ seed = parsed["seed"]
 dataset_dir = "../data/" + dataset + "/"
 data = Grapher(dataset_dir)     # data 中包含 id 与 rel/entity/ts 的正向/反向映射关系，以及把原来的 train/valid/test 数据 id 化后的元组(_idx)。
 # 基于 data.train_idx(就是id化的train 4 元组) 组织 neighbors 和 edges 两种结构，以及 train_idx 和 inv_relation_id
+# learn 过程只用到了 data 里的 train, 没有使用 valid 和 test 数据.
 temporal_walk = Temporal_Walk(data.train_idx, data.inv_relation_id, transition_distr)
 
 # 关于 rule 的处理
