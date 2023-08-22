@@ -328,12 +328,13 @@ def save_candidates(
         all_candidates (dict): candidates for all test queries
         rule_lengths (list): rule lengths
         window (int): time window used for rule application
-        score_func_str (str): scoring function
+        score_func_str (str): scoring function, 打分函数, 后面拼上了 lambda 和 coeff
 
     Returns:
         None
     """
 
+    # 对 all_candidates 进行 reformat, 确保两层字典的 key 都是 int 类型.
     all_candidates = {int(k): v for k, v in all_candidates.items()}
     for k in all_candidates:
         all_candidates[k] = {int(cand): v for cand, v in all_candidates[k].items()}

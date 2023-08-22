@@ -187,10 +187,12 @@ final_no_cands_counter = 0
 for i in range(num_processes):
     final_no_cands_counter += output[i][1]
 
+# 输出统计
 total_time = round(end - start, 6)
 print("Application finished in {} seconds.".format(total_time))
 print("No candidates: ", final_no_cands_counter, " queries")
 
+# 保存 candidates, args 是 [lambda, coeff] 参数对, 按不同的参数组合对分别保存 apply 结果
 for s in range(len(args)):
     score_func_str = score_func.__name__ + str(args[s])
     score_func_str = score_func_str.replace(" ", "")

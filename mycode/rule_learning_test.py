@@ -60,13 +60,13 @@ class Rule_Learner(object):
             walk["entities"][1:][::-1]  # 表示除第一个 entity 外，其它 entities 的倒序
         )
 
-        if rule not in self.found_rules:
+        if rule not in self.found_rules:  # todo 所以 in 可以实现对复杂对象按内容进行比较?
             self.found_rules.append(rule.copy())   # 将 rule 记录下来
             (
                 rule["conf"],
                 rule["rule_supp"],
                 rule["body_supp"],
-            ) = self.estimate_confidence(rule)   # 对 rule 进行应用，评价其有效性，得到 confidence, rule support, body support
+            ) = self.estimate_confidence(rule)   # 对 rule 进行初步验证，评价其有效性，得到 confidence, rule support, body support
 
             if rule["conf"]:
                 # 更新 self.rules_dict，其结构见定义处注释
@@ -112,18 +112,21 @@ class Rule_Learner(object):
         all_bodies = []
         for _ in range(num_samples):
             sample_successful, body_ents_tss = self.sample_body(
-                rule["body_rels"], rule["var_constraints"]
+                rule["body_rels"], rule["var_constraints"] # 传参是除去 head_rel 的其它 rels(倒序) 和除去第一个结点的其它 entities(倒序)
             )
             if sample_successful:
+                # 如果成功, body_ents_tss 是一个[ent, ts,..., ent] 序列
                 all_bodies.append(body_ents_tss)
 
         all_bodies.sort()  # 似乎是使用每一子 list 的第一个元素的值来升序排列的
+        # todo 这里的 itertools.groupby() 似乎是用来排除内容完全相同的 body_ents_tss 的.
+        #  in 不是也有这个功能吗, 在前面 append 的时候用 in 检查一下不就可以了?
         unique_bodies = list(x for x, _ in itertools.groupby(all_bodies))   # 除去完全一样的元素
-        body_support = len(unique_bodies)
+        body_support = len(unique_bodies) # 所以 body support 是指在 num_samples 次的 sample_body 中, 得到符合条件的 body_ents_tss 的次数
 
         confidence, rule_support = 0, 0
         if body_support:
-            # todo 所以 rule_support 即是应用当前 rule 随机构500条路径，其中符合 rule 的要求的那些路径的数量。
+            # 所以 rule_support 是指前面找到的所有 body_ents_tss 中, 可以通过"完整的" rule 规则验证的, 而 body_ents_tss 的查找是不带 head_rel 的, 是"不完整"的
             rule_support = self.calculate_rule_support(unique_bodies, rule["head_rel"])
             confidence = round(rule_support / body_support, 6)
 
@@ -134,7 +137,7 @@ class Rule_Learner(object):
         Sample a walk according to the rule body.
         The sequence of timesteps should be non-decreasing.
 
-        按 body_rels 提供关系序列，从body_rels[0] 开始随机选择一个边为开端，构建一个新的路径，而且要求这具新的路径里的重复节点的位置与数量
+        按 body_rels 提供关系序列，从body_rels[0] 开始随机选择一个边为开端，构建一个新的路径，而且要求这条新的路径里的重复节点的位置与数量
         要与 var_constraints 相同。
 
         Parameters:
@@ -148,22 +151,24 @@ class Rule_Learner(object):
         """
 
         sample_successful = True
+        # body_ents_tss 的结构为 [node0, ts1, node1, ts2, node2, ..., ts_n, node_n]
         body_ents_tss = []
         cur_rel = body_rels[0]
-        rel_edges = self.edges[cur_rel]
-        next_edge = rel_edges[np.random.choice(len(rel_edges))]
-        cur_ts = next_edge[3]
-        cur_node = next_edge[2]
-        body_ents_tss.append(next_edge[0])
+        rel_edges = self.edges[cur_rel] # rel_edges 是所有 rel 为 cur_rel 的四元组
+        next_edge = rel_edges[np.random.choice(len(rel_edges))] # 随机选一个四元组
+        cur_ts = next_edge[3]  # 时间
+        cur_node = next_edge[2]  # tail
+        body_ents_tss.append(next_edge[0])  # body_ents_tss 以 next_edge 的 head 为开端, 形成一个 head->ts->tail->ts...序列
         body_ents_tss.append(cur_ts)
         body_ents_tss.append(cur_node)
 
         for cur_rel in body_rels[1:]:
             next_edges = self.edges[cur_rel]
+            # 在 next_edges 里 head 与 cur_node 相等且 ts 不小于 cur_ts 的位置里为 true
             mask = (next_edges[:, 0] == cur_node) * (next_edges[:, 3] >= cur_ts)
             filtered_edges = next_edges[mask]
 
-            if len(filtered_edges):
+            if len(filtered_edges): # 按照 mask 找到了符合条件的 edges, 从中随机选一个加在后面继续遍历 body_rels
                 next_edge = filtered_edges[np.random.choice(len(filtered_edges))]
                 cur_ts = next_edge[3]
                 cur_node = next_edge[2]
@@ -173,11 +178,13 @@ class Rule_Learner(object):
                 sample_successful = False
                 break
 
-        # body_ents_tss 的结构为 [node0, ts1, node1, ts2, node2, ..., ts_n, node_n]
         if sample_successful and var_constraints:
             # Check variable constraints
+            # todo define_var_constraints 要对 body_ents_tss[::2] 进行去重的排序, 然后与 var_constraints 比较.
+            #  然而 var_constraints 似乎没有做过排序, 而且 body_ents_tss 长度应该跟 var_constraints 以及 body_rels 长度都是相同的, 执行去重有什么意义?
             body_var_constraints = self.define_var_constraints(body_ents_tss[::2])   # body_ents_tss[::2] 即取所有的 nodes
-            if body_var_constraints != var_constraints:   # todo 如果取样的实体里重复出现的实体的位置与数量不相等，则认为失败？
+            # todo 如果取样的实体里重复出现的实体的位置与数量不相等，则认为失败. 这样做的前提是 body_ents_tss 在不同的 ts 组合下有很多合适的的候选
+            if body_var_constraints != var_constraints:
                 sample_successful = False
 
         return sample_successful, body_ents_tss
