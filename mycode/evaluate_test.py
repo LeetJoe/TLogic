@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 
 import rule_application as ra
-from grapher import Grapher
+from grapher_test import Grapher
 from temporal_walk import store_edges
 from baseline import baseline_candidates, calculate_obj_distribution
 
@@ -83,11 +83,14 @@ data = Grapher(dataset_dir)
 num_entities = len(data.id2entity)
 # 使用的也是 test 数据集, valid 数据集应该是在 train 阶段使用了(?)
 test_data = data.test_idx if (parsed["test_data"] == "test") else data.valid_idx
+# store_edge 的作用是组织一个列表，列表的 key 是参数里所有数据的 rel id，value 则是一个与参数数据长度相同的一维数组，如果在原参数数据中
+# 对应位置上四元组的 rel 与 key 相等，则相应位置的值为 true，否则为 false。
 learn_edges = store_edges(data.train_idx)
-# todo 计算总体分布, 并为每一个数据集中的每一个 relation 计算分布
+# todo 计算总体分布, 并为每一个数据集中的每一个 relation 计算分布，用于为没有候选的数据项生成 baseline 候选（在 tLogicNet 里应该不需要！）
 obj_dist, rel_obj_dist = calculate_obj_distribution(data.train_idx, learn_edges)
 
 
+# all_candidates 是一个列表，第一层下标是测试样本的序号，第二层是每个样本对应的 [候选:概率] 列表，每一个列表项是一个 k:v 对，k 是候选，v 是对应的概率
 all_candidates = json.load(open(dir_path + candidates_file))
 all_candidates = {int(k): v for k, v in all_candidates.items()}
 for k in all_candidates:
@@ -102,13 +105,13 @@ num_samples = len(test_data)
 print("Evaluating " + candidates_file + ":")
 for i in range(num_samples):
     test_query = test_data[i]
-    if all_candidates[i]:   # todo 这里用下标 i 定位 candidates? candidates 的下标怎么跟 test 的下标建议关联的, 在 apply 步骤里?
+    if all_candidates[i]:
         candidates = all_candidates[i]
     else:
         candidates = baseline_candidates(  # baseline 候选, todo 基于关系分布为其生成候选列表
             test_query[1], learn_edges, obj_dist, rel_obj_dist
         )
-    # todo 如果在 test_data 里存在 h, r, ts 与 test_query 相同, 惟独 t 与 test_query 不相等的数据, 则把这样的 t 从 candidates 里剔除. (?)
+    # todo 如果在 test_data 里存在 h, r, ts 与 test_query 相同, 惟独 t 与 test_query 不相等的数据, 则把这样的 t 从 candidates 里剔除. (pLogicNet里有类似的操作)
     candidates = filter_candidates(test_query, candidates, test_data)
     # rank 即 test_query[2] 在结果排序中命中的位置
     rank = calculate_rank(test_query[2], candidates, num_entities)

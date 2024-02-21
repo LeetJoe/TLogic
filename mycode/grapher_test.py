@@ -40,11 +40,12 @@ class Grapher(object):
         for i in range(num_relations, num_relations * 2):
             self.inv_relation_id[i] = i % num_relations
 
-        # 使用 create_store 后，txt 里的数据被 id 化，返回数据分两半，前面一半是 [head id, relation id, tail id, ts id],
+        # 使用 create_store 后，txt 里的数据被 id 化，返回数据在第 0 维上分两半，前面一半是 [head id, relation id, tail id, ts id],
         # 后面一半是 [tail id, reverse relation id, head id, ts id], 前后两部分长度完全相等。
         self.train_idx = self.create_store("train.txt")
         self.valid_idx = self.create_store("valid.txt")
         self.test_idx = self.create_store("test.txt")
+        # 在第 0 维在拼在一起
         self.all_idx = np.vstack((self.train_idx, self.valid_idx, self.test_idx))
 
         print("Grapher initialized.")
