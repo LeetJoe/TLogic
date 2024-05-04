@@ -70,6 +70,13 @@ def get_window_edges(all_data, test_query_ts, learn_edges, window=-1):
 
 def match_body_relations(rule, edges, test_query_sub):
     """
+    这个函数的功能是，从 edges 里找到以 test_query_sub 开头并与 rule 对应的路径；
+    如 [[[1,2,10],[1,3,12]],[[3,5,16]] 表示的含义是，rule 的 body relations 有
+    两条 rel，以 1 开头，按 rel[0] 能找到 [1,2,10],[1,3,12], 其含义为
+    [head, tail ,ts]；再按 rel[1] 能找到 [3,5,16]；显然 [1,3,12] 和 [3,5,16]
+    构成了一条路径，而 [1,2,10] 没能找到符合 rel[1] 的后继；若子表为空表，则表示没有找到
+    对应的路径。
+
     Find edges that could constitute walks (starting from the test query subject)
     that match the rule.
     First, find edges whose subject match the query subject and the relation matches
@@ -91,28 +98,41 @@ def match_body_relations(rule, edges, test_query_sub):
     try:
         rel_edges = edges[rels[0]]  # 与目标 relation 匹配的那些 edges
         mask = rel_edges[:, 0] == test_query_sub   # 找到那些 head 与 subject 相同的 edges 的位置
-        new_edges = rel_edges[mask] # 按 mask 进行筛选
+        new_edges = rel_edges[mask]  # new_edges 现在是那些以 test_query_sub 开头且 r 为 rule["body_rels"] 里第一项的那些 edges
         walk_edges = [
             np.hstack((new_edges[:, 0:1], new_edges[:, 2:4]))
-        ]  # [sub, obj, ts]
-        cur_targets = np.array(list(set(walk_edges[0][:, 1])))
+        ]  # list of [sub, obj, ts]
+        cur_targets = np.array(list(set(walk_edges[0][:, 1])))  # cur_targets 是 walk_edges 里的 obj unique list(cands)
 
         for i in range(1, len(rels)):
             # Match current targets and next body relation
             try:
                 rel_edges = edges[rels[i]]
+
+                # rel_edges[:, 0] 是一个一维数组；cur_targets 也是一个一维数组；但是
+                # cur_targets[:, None] 会给 cur_targets 增加一维，使其中每一个元组
+                # 自成一个 list。这样再进行 rel_edges[:, 0] == cur_targets[:, None]
+                # 的时候，得到的是一个二维数组；其中行长度与 rel_edges[:, 0] 相同，
+                # i 行中每一个位置若有 rel_edges[:, 0] 与 cur_targets[:, None][i][0]
+                # 相等，则为 True；否则为 false。假设 rel_edges[:, 0]=[1,2,3], cur_targets
+                # = [1,2,3], 则 cur_targets[:, None] = [[1],[2],[3]]，rel_edges[:, 0]
+                # == cur_targets[:, None] 是一个 3x3 的矩阵，只有对角元素为 True，其它为 False
+
+                # np.any(np.array(), axis=0)) 表示第一个参数以第 0 维切分，切分得到的 list
+                # 中只要有一个为 True，就返回 True，最终得到一个 list，长度与第一个参数在 0 维上的长度相同。
                 mask = np.any(rel_edges[:, 0] == cur_targets[:, None], axis=0)
-                new_edges = rel_edges[mask]
+                new_edges = rel_edges[mask]  # 新的 edges，即经过上一步骤可以到达的 edges（连通到 head）
                 walk_edges.append(
                     np.hstack((new_edges[:, 0:1], new_edges[:, 2:4]))
                 )  # [sub, obj, ts]
                 cur_targets = np.array(list(set(walk_edges[i][:, 1])))
-            except KeyError:
+            except KeyError:  # 这是个处理问题的好方法，只要 keyerror 就置空，免去了处理 key 异常的各种情况
                 walk_edges.append([])
                 break
     except KeyError:
         walk_edges = [[]]
 
+    # walk_edges 可能全为空 [[]]，也可能部分为空 [[1,2],[]]; 存在空子列表意味着 walk 失败了：没有找到路径
     return walk_edges
 
 

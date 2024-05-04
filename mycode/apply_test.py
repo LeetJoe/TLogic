@@ -91,10 +91,10 @@ def apply_rules(i, num_queries):
             # 若 window=0，则返回 all_idx 里 ts 在[0, cur_ts] 里的数据；或 window<0，则直接返回 learn_edges.
             edges = ra.get_window_edges(data.all_idx, cur_ts, learn_edges, window)
 
-        if test_query[1] in rules_dict:   # test_query[1] 是4元组的 relation，如果 relation 有 rule 存在(注意这里是 if 语句不是 for 语句)
+        if test_query[1] in rules_dict:   # test_query[1] 是4元组的 relation，如果 relation 有 rule 存在
             dicts_idx = list(range(len(args)))   # args 可以多给几对参数，然后评估不同的组合的评价效果
             for rule in rules_dict[test_query[1]]:  # test_query[1] 是 relation, 按 relation 从 rules_dict 中找到相关的 rule 进行遍历
-                walk_edges = ra.match_body_relations(rule, edges, test_query[0]) # test_query[0] 是 head，尝试使用 rule 要找 walk
+                walk_edges = ra.match_body_relations(rule, edges, test_query[0])  # test_query[0] 是 head，尝试使用 rule 要找 walk
 
                 if 0 not in [len(x) for x in walk_edges]:
                     rule_walks = ra.get_walks(rule, walk_edges)    # rule_walks 是一个 Numpy.DataFrame, 类似 excel 的二维数据组织结构。
