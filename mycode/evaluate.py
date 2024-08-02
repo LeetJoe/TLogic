@@ -96,6 +96,11 @@ hits_3 = 0
 hits_10 = 0
 mrr = 0
 
+list_hits_1 = []
+list_hits_3 = []
+list_hits_10 = []
+list_hits_out = []
+
 num_samples = len(test_data)
 print("Evaluating " + candidates_file + ":")
 for i in range(num_samples):
@@ -118,6 +123,17 @@ for i in range(num_samples):
                     hits_1 += 1
         mrr += 1 / rank
 
+        if rank == 1:
+            list_hits_1.append(test_query)
+        elif rank <= 3:
+            list_hits_3.append(test_query)
+        elif rank <= 10:
+            list_hits_10.append(test_query)
+        else:
+            list_hits_out.append(test_query)
+    else:
+        list_hits_out.append(test_query)
+
 hits_1 /= num_samples
 hits_3 /= num_samples
 hits_10 /= num_samples
@@ -134,3 +150,21 @@ with open(dir_path + filename, "w", encoding="utf-8") as fout:
     fout.write("Hits@3: " + str(round(hits_3, 6)) + "\n")
     fout.write("Hits@10: " + str(round(hits_10, 6)) + "\n")
     fout.write("MRR: " + str(round(mrr, 6)))
+
+filename = candidates_file[:-5] + "_hits.txt"
+with open(dir_path + filename, "w", encoding="utf-8") as fout:
+    fout.write("Hits@1: " + str(len(list_hits_1)) + "\n")
+    for item in list_hits_1:
+        fout.write(str(item[0]) + "\t" + str(item[1]) + "\t" + str(item[2]) + "\n")
+
+    fout.write("Hits@3: " + str(len(list_hits_3)) + "\n")
+    for item in list_hits_3:
+        fout.write(str(item[0]) + "\t" + str(item[1]) + "\t" + str(item[2]) + "\n")
+
+    fout.write("Hits@10: " + str(len(list_hits_10)) + "\n")
+    for item in list_hits_10:
+        fout.write(str(item[0]) + "\t" + str(item[1]) + "\t" + str(item[2]) + "\n")
+
+    fout.write("Hits@0: " + str(len(list_hits_out)) + "\n")
+    for item in list_hits_out:
+        fout.write(str(item[0]) + "\t" + str(item[1]) + "\t" + str(item[2]) + "\n")
