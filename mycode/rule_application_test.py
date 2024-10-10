@@ -332,11 +332,13 @@ def get_candidates(
     cands = set(rule_walks[max_entity])  # 去重
 
     for cand in cands:
+        # 打分的时候考虑关于此候选的所有路径 todo 这里借鉴一下打分函数
         cands_walks = rule_walks[rule_walks[max_entity] == cand]
         for s in dicts_idx:
             score = score_func(rule, cands_walks, test_query_ts, *args[s]).astype(
                 np.float32
             )
+            # 每一个 candidate 有多个 score，这里还没有做聚合。
             try:
                 cands_dict[s][cand].append(score)
             except KeyError:
