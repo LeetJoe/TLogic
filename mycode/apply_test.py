@@ -47,7 +47,7 @@ rules_dict = ra.filter_rules(
 )
 print("Rules statistics after pruning:")
 rules_statistics(rules_dict)
-learn_edges = store_edges(data.train_idx)
+learn_edges = store_edges(data.train_idx)  # 以 rel 为 key 组织的所有四元组数据
 
 score_func = score_12  # score function 有三个不同的实现
 # It is possible to specify a list of list of arguments for tuning
@@ -96,8 +96,7 @@ def apply_rules(i, num_queries):
             for rule in rules_dict[test_query[1]]:  # test_query[1] 是 relation, 按 relation 从 rules_dict 中找到相关的 rule 进行遍历
                 walk_edges = ra.match_body_relations(rule, edges, test_query[0])  # test_query[0] 是 head，尝试使用 rule 要找 walk
 
-                # todo neosong
-                if 0 not in [len(x) for x in walk_edges]:
+                if 0 not in [len(x) for x in walk_edges]:  # 确保 rule body 中的每一个关系都存在连路，不然意味着任何路径都不可能存在
                     rule_walks = ra.get_walks(rule, walk_edges)    # rule_walks 是一个 Numpy.DataFrame, 类似 excel 的二维数据组织结构。
                     if rule["var_constraints"]:
                         rule_walks = ra.check_var_constraints(

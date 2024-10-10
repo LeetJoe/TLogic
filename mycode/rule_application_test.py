@@ -282,9 +282,7 @@ def get_walks_complete(rule, walk_edges):
     return rule_walks
 
 
-# todo 这个 var_constraints 一直没明白作用是什么，之前看数据的时候，发现它应该是表示在规则路径中存在重复出现的实体的位置。
-# todo 在查找规则路径的时候，除了上面的“首尾相接”式筛选，这里还有一个使用 var_constraints 的筛选。
-# todo 是否意味着，对于某条规则，即便找到一条符合此规则的路径，也并不意味着这条路径有效，同时必须满足规则中 var_constraints 限定的约束才可以？
+# 这个 var_constraints 是一个数组，结构类似 [[0,2],[1,3]] 它所表达的含义是，在这个规则的 rule body 中，第 0 个实体应该与第 2 个实体相同，且第 1 个实体应与第 3 个实体相同
 def check_var_constraints(var_constraints, rule_walks):
     """
     Check variable constraints of the rule.
