@@ -136,6 +136,8 @@ def match_body_relations(rule, edges, test_query_sub):
     return walk_edges
 
 
+# 在上面的方法的基础上，进一步约束每步 rel 之间必须能连接起来形成一条完整的路径。
+# todo 但是这个方法实际上没用？？
 def match_body_relations_complete(rule, edges, test_query_sub):
     """
     Find edges that could constitute walks (starting from the test query subject)
@@ -166,6 +168,7 @@ def match_body_relations_complete(rule, edges, test_query_sub):
             # Match current targets and next body relation
             try:
                 rel_edges = edges[rels[i]]
+                # 下一步的 head 必须与当前的 target 相等，即能连接得起来。
                 mask = np.any(rel_edges[:, 0] == cur_targets[:, None], axis=0)
                 new_edges = rel_edges[mask]
                 walk_edges.append(new_edges)
@@ -179,6 +182,7 @@ def match_body_relations_complete(rule, edges, test_query_sub):
     return walk_edges
 
 
+# 就是把上面的方法得到的 walk_edges 组成可以接通的直接路径，类似我实现的 get_ht_hop 方法。
 def get_walks(rule, walk_edges):
     """
     Get walks for a given rule. Take the time constraints into account.
@@ -198,7 +202,7 @@ def get_walks(rule, walk_edges):
         columns=["entity_" + str(0), "entity_" + str(1), "timestamp_" + str(0)],
         dtype=np.uint16,
     )  # Change type if necessary for better memory efficiency
-    if not rule["var_constraints"]:
+    if not rule["var_constraints"]:  # todo ??
         del df["entity_" + str(0)]
     df_edges.append(df)
     df = df[0:0]  # Memory efficiency
@@ -229,6 +233,7 @@ def get_walks(rule, walk_edges):
     return rule_walks
 
 
+# 这个方法跟前面那个 match_body_relations_complete 方法一样，没有被使用过
 def get_walks_complete(rule, walk_edges):
     """
     Get complete walks for a given rule. Take the time constraints into account.
@@ -277,6 +282,9 @@ def get_walks_complete(rule, walk_edges):
     return rule_walks
 
 
+# todo 这个 var_constraints 一直没明白作用是什么，之前看数据的时候，发现它应该是表示在规则路径中存在重复出现的实体的位置。
+# todo 在查找规则路径的时候，除了上面的“首尾相接”式筛选，这里还有一个使用 var_constraints 的筛选。
+# todo 是否意味着，对于某条规则，即便找到一条符合此规则的路径，也并不意味着这条路径有效，同时必须满足规则中 var_constraints 限定的约束才可以？
 def check_var_constraints(var_constraints, rule_walks):
     """
     Check variable constraints of the rule.
@@ -319,8 +327,9 @@ def get_candidates(
         cands_dict (dict): updated candidates
     """
 
+    # 取所有可能路径的最后一列实体作为候选，不必遍历所有
     max_entity = "entity_" + str(len(rule["body_rels"]))
-    cands = set(rule_walks[max_entity])
+    cands = set(rule_walks[max_entity])  # 去重
 
     for cand in cands:
         cands_walks = rule_walks[rule_walks[max_entity] == cand]
