@@ -212,7 +212,7 @@ class Rule_Learner(object):
                 * (head_rel_edges[:, 3] > body[-2])
             )
 
-            if True in mask:   # 这里似乎可以使用 rule_support += mask.sum()
+            if True in mask:
                 rule_support += 1
 
         return rule_support

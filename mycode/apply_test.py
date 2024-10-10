@@ -13,13 +13,13 @@ from score_functions_test import score_12
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", "-d", default="", type=str)
+parser.add_argument("--dataset", "-d", default="icews14", type=str)
 parser.add_argument("--test_data", default="test", type=str)
-parser.add_argument("--rules", "-r", default="", type=str)
-parser.add_argument("--rule_lengths", "-l", default=1, type=int, nargs="+")
+parser.add_argument("--rules", "-r", default="210723111703_r[1,2,3]_n200_exp_s12_rules.json", type=str)
+parser.add_argument("--rule_lengths", "-l", default=[1, 2, 3], type=int, nargs="+")
 parser.add_argument("--window", "-w", default=-1, type=int)
 parser.add_argument("--top_k", default=20, type=int)
-parser.add_argument("--num_processes", "-p", default=1, type=int)
+parser.add_argument("--num_processes", "-p", default=4, type=int)
 parsed = vars(parser.parse_args())
 
 dataset = parsed["dataset"]
@@ -37,7 +37,7 @@ data = Grapher(dataset_dir)
 # todo test_data 是 apply 过程的主要目标数据
 test_data = data.test_idx if (parsed["test_data"] == "test") else data.valid_idx
 rules_dict = json.load(open(dir_path + rules_file))
-rules_dict = {int(k): v for k, v in rules_dict.items()} # 再次整理字典格式, 保证 key 都是 int 类型
+rules_dict = {int(k): v for k, v in rules_dict.items()}  # 再次整理字典格式, 保证 key 都是 int 类型
 print("Rules statistics:")
 rules_statistics(rules_dict)
 
@@ -78,7 +78,7 @@ def apply_rules(i, num_queries):
         test_queries_idx = range(i * num_queries, len(test_data))
 
     cur_ts = test_data[test_queries_idx[0]][3]  # 当前分组第一项条目的 ts
-    edges = ra.get_window_edges(data.all_idx, cur_ts, learn_edges, window) # window 传 0 表示取 cur_ts 之前的所有数据
+    edges = ra.get_window_edges(data.all_idx, cur_ts, learn_edges, window)  # window 传 0 表示取 cur_ts 之前的所有数据
 
     it_start = time.time()
     for j in test_queries_idx:
@@ -96,6 +96,7 @@ def apply_rules(i, num_queries):
             for rule in rules_dict[test_query[1]]:  # test_query[1] 是 relation, 按 relation 从 rules_dict 中找到相关的 rule 进行遍历
                 walk_edges = ra.match_body_relations(rule, edges, test_query[0])  # test_query[0] 是 head，尝试使用 rule 要找 walk
 
+                # todo neosong
                 if 0 not in [len(x) for x in walk_edges]:
                     rule_walks = ra.get_walks(rule, walk_edges)    # rule_walks 是一个 Numpy.DataFrame, 类似 excel 的二维数据组织结构。
                     if rule["var_constraints"]:
@@ -139,7 +140,7 @@ def apply_rules(i, num_queries):
                     # Calculate noisy-or scores
                     scores = list(
                         map(
-                            lambda x: 1 - np.product(1 - np.array(x)),
+                            lambda x: 1 - np.prod(1 - np.array(x)),
                             cands_dict[s].values(),
                         )
                     )
